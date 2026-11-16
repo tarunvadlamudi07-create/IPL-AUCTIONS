@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IPL Auction Room</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{font:15px system-ui,sans-serif;background:#0e1430;color:#eef1ff;margin:0;padding:12px}
+#app{max-width:980px;margin:auto}
+.card{background:#182049;border-radius:14px;padding:16px;margin-bottom:12px}
+h1,h2,h3{margin:.2em 0}
+input{padding:10px;border-radius:8px;border:0;margin:4px 6px 4px 0;width:150px}
+.b{background:#f7b32b;color:#1a1a1a;border:0;border-radius:10px;padding:10px 18px;font-weight:700;cursor:pointer;margin:4px 6px 4px 0}
+.b.big{font-size:22px;padding:16px 30px}.b.alt{background:#3b4a8f;color:#fff}.b:disabled{opacity:.35;cursor:not-allowed}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.t{background:#222d63;border:2px solid transparent;border-radius:10px;padding:10px;cursor:pointer;color:#fff;text-align:left}
+.t.mine{border-color:#f7b32b}.t.taken{opacity:.55}
+table{width:100%;border-collapse:collapse}td,th{padding:5px 6px;text-align:left;border-bottom:1px solid #2a356f}
+.big-n{font-size:30px;font-weight:800}.price{font-size:40px;font-weight:800;color:#f7b32b}
+.s{color:#9aa6e0;font-size:13px}.err{color:#ff8080}.pill{background:#2e3b80;border-radius:20px;padding:2px 10px;margin-right:6px;font-size:13px}
+.row{display:flex;gap:12px;flex-wrap:wrap}.row>div{flex:1;min-width:280px}
+.sold{color:#6ee7a0;font-weight:700}.log div{padding:2px 0;border-bottom:1px dashed #2a356f}
+</style></head><body><div id="app"></div>
+<script>
+/* ---------- PLAYER POOL: Name|Role|Country|Base(lakh)|LastTeam(2025, '-' = none) ---------- */
+const RAW=`Virat Kohli|BAT|IND|200|RCB
+Rohit Sharma|BAT|IND|200|MI
+Jasprit Bumrah|BWL|IND|200|MI
+Hardik Pandya|AR|IND|200|MI
+Ravindra Jadeja|AR|IND|200|CSK
+Shubman Gill|BAT|IND|200|GT
+Suryakumar Yadav|BAT|IND|200|MI
+KL Rahul|WK|IND|200|DC
+Rishabh Pant|WK|IND|200|LSG
+Shreyas Iyer|BAT|IND|200|PBKS
+Yashasvi Jaiswal|BAT|IND|200|RR
+Sanju Samson|WK|IND|200|RR
+Mohammed Shami|BWL|IND|200|SRH
+Mohammed Siraj|BWL|IND|200|GT
+Arshdeep Singh|BWL|IND|200|PBKS
+Yuzvendra Chahal|BWL|IND|200|PBKS
+Kuldeep Yadav|BWL|IND|200|DC
+Axar Patel|AR|IND|200|DC
+Ruturaj Gaikwad|BAT|IND|200|CSK
+Varun Chakravarthy|BWL|IND|200|KKR
+Ishan Kishan|WK|IND|200|SRH
+Rinku Singh|BAT|IND|150|KKR
+Washington Sundar|AR|IND|150|GT
+Tilak Varma|BAT|IND|150|MI
+Abhishek Sharma|AR|IND|150|SRH
+Shivam Dube|AR|IND|150|CSK
+Venkatesh Iyer|AR|IND|150|KKR
+T Natarajan|BWL|IND|150|DC
+Prasidh Krishna|BWL|IND|150|GT
+Avesh Khan|BWL|IND|150|LSG
+Deepak Chahar|BWL|IND|150|MI
+Bhuvneshwar Kumar|BWL|IND|150|RCB
+Harshal Patel|BWL|IND|150|SRH
+Shardul Thakur|AR|IND|150|LSG
+Krunal Pandya|AR|IND|150|RCB
+Ravi Bishnoi|BWL|IND|150|LSG
+Umesh Yadav|BWL|IND|100|KKR
+Khaleel Ahmed|BWL|IND|100|CSK
+Mukesh Kumar|BWL|IND|100|DC
+Mayank Yadav|BWL|IND|100|LSG
+Harshit Rana|BWL|IND|100|KKR
+Yash Dayal|BWL|IND|100|RCB
+Akash Deep|BWL|IND|100|LSG
+Nitish Kumar Reddy|AR|IND|100|SRH
+Riyan Parag|AR|IND|100|RR
+Dhruv Jurel|WK|IND|100|RR
+Jitesh Sharma|WK|IND|100|RCB
+Devdutt Padikkal|BAT|IND|100|RCB
+Sai Sudharsan|BAT|IND|100|GT
+Ajinkya Rahane|BAT|IND|100|KKR
+Rajat Patidar|BAT|IND|100|RCB
+Mayank Agarwal|BAT|IND|100|RCB
+Ishant Sharma|BWL|IND|75|GT
+Mohit Sharma|BWL|IND|75|DC
+Navdeep Saini|BWL|IND|75|RR
+Jaydev Unadkat|BWL|IND|75|SRH
+Umran Malik|BWL|IND|75|KKR
+Sandeep Sharma|BWL|IND|75|RR
+Shivam Mavi|BWL|IND|75|LSG
+Sai Kishore|BWL|IND|75|GT
+Sarfaraz Khan|BAT|IND|75|PBKS
+Manish Pandey|BAT|IND|75|KKR
+Karun Nair|BAT|IND|75|DC
+Prithvi Shaw|BAT|IND|75|DC
+Rahul Tripathi|BAT|IND|75|CSK
+Rahul Tewatia|AR|IND|75|GT
+Shahbaz Ahmed|AR|IND|75|LSG
+Vijay Shankar|AR|IND|75|CSK
+Deepak Hooda|AR|IND|75|CSK
+Ramandeep Singh|AR|IND|75|KKR
+Rahul Chahar|BWL|IND|75|SRH
+Jayant Yadav|AR|IND|50|GT
+Karn Sharma|BWL|IND|50|MI
+Chetan Sakariya|BWL|IND|50|KKR
+Kuldeep Sen|BWL|IND|50|PBKS
+Kartik Tyagi|BWL|IND|50|-
+Anshul Kamboj|BWL|IND|50|CSK
+KS Bharat|WK|IND|50|GT
+Pat Cummins|BWL|AUS|200|SRH
+Mitchell Starc|BWL|AUS|200|DC
+Josh Hazlewood|BWL|AUS|200|RCB
+Travis Head|BAT|AUS|200|SRH
+David Warner|BAT|AUS|200|-
+Steve Smith|BAT|AUS|150|-
+Glenn Maxwell|AR|AUS|200|PBKS
+Marcus Stoinis|AR|AUS|200|PBKS
+Mitchell Marsh|AR|AUS|200|LSG
+Tim David|BAT|AUS|150|RCB
+Cameron Green|AR|AUS|200|-
+Jake Fraser-McGurk|BAT|AUS|100|DC
+Josh Inglis|WK|AUS|200|PBKS
+Adam Zampa|BWL|AUS|150|-
+Nathan Ellis|BWL|AUS|125|PBKS
+Spencer Johnson|BWL|AUS|100|KKR
+Xavier Bartlett|BWL|AUS|100|PBKS
+Sean Abbott|BWL|AUS|75|-
+Matthew Wade|WK|AUS|75|-
+Alex Carey|WK|AUS|100|-
+Marnus Labuschagne|BAT|AUS|75|-
+Jason Behrendorff|BWL|AUS|75|MI
+Riley Meredith|BWL|AUS|75|-
+Mitchell Owen|AR|AUS|75|PBKS
+Josh Philippe|WK|AUS|75|-
+Matthew Short|AR|AUS|75|-
+Aaron Hardie|AR|AUS|75|-
+Lance Morris|BWL|AUS|75|-
+Jhye Richardson|BWL|AUS|75|-
+Ashton Agar|AR|AUS|50|-
+Ben McDermott|WK|AUS|50|-
+Nathan Coulter-Nile|BWL|AUS|75|-
+Kane Richardson|BWL|AUS|50|-
+Daniel Sams|AR|AUS|50|-
+Cooper Connolly|AR|AUS|75|PBKS
+Chris Lynn|BAT|AUS|75|-
+Jos Buttler|WK|ENG|200|GT
+Jofra Archer|BWL|ENG|200|RR
+Phil Salt|WK|ENG|200|RCB
+Liam Livingstone|AR|ENG|200|RCB
+Sam Curran|AR|ENG|200|CSK
+Ben Stokes|AR|ENG|200|-
+Jonny Bairstow|WK|ENG|150|-
+Harry Brook|BAT|ENG|200|-
+Moeen Ali|AR|ENG|150|KKR
+Jacob Bethell|AR|ENG|125|RCB
+Will Jacks|AR|ENG|200|MI
+Reece Topley|BWL|ENG|75|-
+Chris Woakes|AR|ENG|150|-
+Mark Wood|BWL|ENG|150|-
+Adil Rashid|BWL|ENG|100|-
+Tom Curran|AR|ENG|100|-
+Jason Roy|BAT|ENG|100|KKR
+Dawid Malan|BAT|ENG|100|-
+Ben Duckett|BAT|ENG|75|-
+Jamie Overton|AR|ENG|100|CSK
+Liam Dawson|AR|ENG|75|-
+Tom Banton|WK|ENG|75|-
+Sam Billings|WK|ENG|75|-
+Joe Root|BAT|ENG|150|RR
+Gus Atkinson|BWL|ENG|100|KKR
+Rehan Ahmed|AR|ENG|75|-
+Brydon Carse|BWL|ENG|100|SRH
+Luke Wood|BWL|ENG|75|-
+David Willey|AR|ENG|75|-
+Chris Jordan|BWL|ENG|75|-
+Jamie Smith|WK|ENG|100|-
+Tymal Mills|BWL|ENG|75|-
+Kagiso Rabada|BWL|SA|200|GT
+Quinton de Kock|WK|SA|200|KKR
+Aiden Markram|BAT|SA|200|LSG
+David Miller|BAT|SA|200|LSG
+Heinrich Klaasen|WK|SA|200|SRH
+Marco Jansen|AR|SA|200|PBKS
+Anrich Nortje|BWL|SA|150|-
+Tristan Stubbs|BAT|SA|150|DC
+Faf du Plessis|BAT|SA|150|DC
+Lungi Ngidi|BWL|SA|100|RCB
+Gerald Coetzee|BWL|SA|100|GT
+Keshav Maharaj|BWL|SA|75|-
+Tabraiz Shamsi|BWL|SA|75|-
+Reeza Hendricks|BAT|SA|100|-
+Rassie van der Dussen|BAT|SA|100|-
+Dewald Brevis|BAT|SA|100|CSK
+Ryan Rickelton|WK|SA|150|MI
+Wiaan Mulder|AR|SA|100|-
+Corbin Bosch|AR|SA|75|MI
+Lizaad Williams|BWL|SA|75|-
+Kwena Maphaka|BWL|SA|75|-
+Temba Bavuma|BAT|SA|75|-
+Dwaine Pretorius|AR|SA|50|-
+Beuran Hendricks|BWL|SA|50|-
+Andile Phehlukwayo|AR|SA|50|-
+Nandre Burger|BWL|SA|75|RR
+Donovan Ferreira|WK|SA|75|-
+Rilee Rossouw|BAT|SA|75|-
+Kane Williamson|BAT|NZ|150|-
+Trent Boult|BWL|NZ|200|MI
+Devon Conway|BAT|NZ|150|CSK
+Rachin Ravindra|AR|NZ|150|CSK
+Daryl Mitchell|AR|NZ|150|-
+Mitchell Santner|AR|NZ|150|MI
+Lockie Ferguson|BWL|NZ|150|PBKS
+Tim Southee|BWL|NZ|100|-
+Glenn Phillips|AR|NZ|150|GT
+Finn Allen|BAT|NZ|100|-
+Tim Seifert|WK|NZ|100|-
+Matt Henry|BWL|NZ|100|-
+Jimmy Neesham|AR|NZ|100|-
+Kyle Jamieson|BWL|NZ|100|-
+Mark Chapman|AR|NZ|75|-
+Adam Milne|BWL|NZ|75|-
+Will O'Rourke|BWL|NZ|75|-
+Ish Sodhi|BWL|NZ|50|-
+Michael Bracewell|AR|NZ|75|-
+Jacob Duffy|BWL|NZ|75|RCB
+Colin Munro|BAT|NZ|75|-
+Martin Guptill|BAT|NZ|50|-
+Ben Sears|BWL|NZ|50|-
+Nicholas Pooran|WK|WI|200|LSG
+Andre Russell|AR|WI|200|KKR
+Sunil Narine|AR|WI|200|KKR
+Shimron Hetmyer|BAT|WI|150|RR
+Jason Holder|AR|WI|150|GT
+Rovman Powell|BAT|WI|150|KKR
+Alzarri Joseph|BWL|WI|100|-
+Romario Shepherd|AR|WI|100|RCB
+Shai Hope|WK|WI|100|-
+Akeal Hosein|BWL|WI|75|-
+Obed McCoy|BWL|WI|75|-
+Sherfane Rutherford|BAT|WI|100|GT
+Evin Lewis|BAT|WI|75|-
+Brandon King|BAT|WI|75|-
+Kyle Mayers|AR|WI|100|-
+Odean Smith|AR|WI|75|-
+Fabian Allen|AR|WI|75|-
+Keemo Paul|AR|WI|75|-
+Oshane Thomas|BWL|WI|75|-
+Johnson Charles|WK|WI|75|-
+Roston Chase|AR|WI|75|-
+Gudakesh Motie|BWL|WI|75|-
+Matthew Forde|AR|WI|75|-
+Shamar Joseph|BWL|WI|75|LSG
+Rahkeem Cornwall|AR|WI|50|-
+Wanindu Hasaranga|AR|SL|150|RR
+Maheesh Theekshana|BWL|SL|150|RR
+Matheesha Pathirana|BWL|SL|150|CSK
+Pathum Nissanka|BAT|SL|100|-
+Kusal Mendis|WK|SL|100|-
+Dushmantha Chameera|BWL|SL|75|KKR
+Dasun Shanaka|AR|SL|75|-
+Kusal Perera|WK|SL|75|-
+Dilshan Madushanka|BWL|SL|75|-
+Charith Asalanka|BAT|SL|75|-
+Angelo Mathews|AR|SL|75|-
+Nuwan Thushara|BWL|SL|75|MI
+Dunith Wellalage|AR|SL|50|-
+Kamindu Mendis|AR|SL|75|SRH
+Binura Fernando|BWL|SL|50|-
+Avishka Fernando|BAT|SL|50|-
+Lahiru Kumara|BWL|SL|50|-
+Bhanuka Rajapaksa|BAT|SL|50|-
+Chamika Karunaratne|AR|SL|50|-
+Jeffrey Vandersay|BWL|SL|50|-
+Rashid Khan|BWL|AFG|200|GT
+Mohammad Nabi|AR|AFG|100|MI
+Mujeeb Ur Rahman|BWL|AFG|100|-
+Noor Ahmad|BWL|AFG|150|CSK
+Rahmanullah Gurbaz|WK|AFG|100|KKR
+Azmatullah Omarzai|AR|AFG|100|PBKS
+Fazalhaq Farooqi|BWL|AFG|100|RR
+Naveen-ul-Haq|BWL|AFG|75|-
+Gulbadin Naib|AR|AFG|50|-
+Allah Ghazanfar|BWL|AFG|75|MI
+Ibrahim Zadran|BAT|AFG|75|-
+Hazratullah Zazai|BAT|AFG|50|-
+Karim Janat|AR|AFG|50|-
+Mustafizur Rahman|BWL|BAN|150|DC
+Shakib Al Hasan|AR|BAN|100|-
+Litton Das|WK|BAN|75|-
+Taskin Ahmed|BWL|BAN|75|-
+Mahmudullah|AR|BAN|50|-
+Sandeep Lamichhane|BWL|NEP|75|-
+Josh Little|BWL|IRE|100|-
+Mark Adair|BWL|IRE|50|-
+David Wiese|AR|NAM|75|-
+Sikandar Raza|AR|ZIM|100|PBKS`;
+
+const POOL=RAW.trim().split('\n').map(l=>{const [n,r,c,b,t]=l.split('|');return{n,r,c,b:+b,t}});
+const TEAMS={CSK:'Chennai Super Kings',MI:'Mumbai Indians',RCB:'Royal Challengers Bengaluru',KKR:'Kolkata Knight Riders',SRH:'Sunrisers Hyderabad',DC:'Delhi Capitals',PBKS:'Punjab Kings',RR:'Rajasthan Royals',GT:'Gujarat Titans',LSG:'Lucknow Super Giants'};
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const cr=l=>(l/100).toFixed(l%100?2:0).replace(/(\.\d)0$/,'$1')+' Cr';
+const inc=l=>l<100?5:l<200?10:l<500?20:25;
+function can(T,p,price){if(!T)return false;if(T.squad.length>=25)return false;if(p.c!=='IND'&&T.os>=8)return false;
+  return T.purse-price>=Math.max(0,17-T.squad.length)*30}
+
+let tok=localStorage.iplTok||(localStorage.iplTok=Math.random().toString(36).slice(2)+Date.now().toString(36));
+let name=localStorage.iplName||'',isHost=false,peer,hostConn,conns={},S,V=null,you=null,recv=0,room=location.hash.slice(1),err='';
+
+/* ---------- extra styles + pool overlay container (host only) ---------- */
+const st=document.createElement('style');
+st.textContent=`#poolbox{position:fixed;inset:0;background:rgba(5,8,25,.94);z-index:50;overflow:auto;padding:12px;display:none}
+#poolbox.on{display:block}.pw{max-width:980px;margin:auto}
+.pw select,.pw input{padding:8px;border-radius:8px;border:0;margin:3px 6px 3px 0;width:auto}
+.pw .x{color:#ff8080;cursor:pointer;background:none;border:0;font-size:13px}.tw{overflow-x:auto}`;
+document.head.appendChild(st);
+const pb=document.createElement('div');pb.id='poolbox';document.body.appendChild(pb);
+let poolOpen=false,psig='',pf={q:'',r:'',c:'',s:''};
+
+/* ---------- HOST (authoritative auctioneer) ---------- */
+function newS(){const teams={};for(const k in TEAMS)teams[k]={owner:null,purse:0,squad:[],os:0,rtm:0};
+  return{phase:'lobby',cfg:{purse:12000,rtm:2},players:{},teams,pool:[],i:0,cur:null,log:[],round:1,unsold:[],excl:{},hostTok:tok}}
+
+function view(){const names={};for(const k in S.players)names[k]=S.players[k].name;const teams={};
+  for(const k in S.teams){const T=S.teams[k];teams[k]={...T,owner:T.owner?names[T.owner]:null}}
+  return{phase:S.phase,cfg:S.cfg,teams,i:S.i,n:S.pool.length,round:S.round,log:S.log.slice(0,30),
+    poolN:POOL.length-Object.keys(S.excl).length,
+    people:Object.values(S.players).map(p=>({name:p.name,team:p.team})),
+    cur:S.cur&&{...S.cur,left:Math.max(0,S.cur.end-Date.now())}}}
+function bc(){const v=view();for(const k in conns){try{conns[k].send({t:'s',s:v,you:S.players[k]&&S.players[k].team})}catch(e){}}
+  V=v;you=S.players[tok]&&S.players[tok].team;recv=Date.now();render();
+  if(poolOpen){const sg=S.log.length+'|'+S.i+'|'+S.phase+'|'+Object.keys(S.excl).length+'|'+(S.cur?S.cur.p.n:'');
+    if(sg!==psig&&!(document.activeElement&&document.activeElement.id==='pq')){psig=sg;renderPool()}}}
+
+function handle(k,m){
+  const pl=S.players[k];
+  if(m.t==='join'){S.players[k]={name:String(m.name||'Guest').slice(0,20),team:pl?pl.team:null};bc();return}
+  if(!pl)return;
+  if(m.t==='pick'&&S.phase==='lobby'&&S.teams[m.team]){const T=S.teams[m.team];
+    if(!T.owner||T.owner===k){if(pl.team===m.team){T.owner=null;pl.team=null}
+      else{if(pl.team)S.teams[pl.team].owner=null;T.owner=k;pl.team=m.team}}}
+  else if(m.t==='cfg'&&k===S.hostTok&&S.phase==='lobby'){
+    S.cfg={purse:Math.max(2000,Math.min(30000,Math.round(+m.purse*100)||12000)),rtm:Math.max(0,Math.min(6,+m.rtm||0))}}
+  else if(m.t==='excl'&&k===S.hostTok&&S.phase==='lobby'){const p=POOL[m.i];
+    if(p){if(S.excl[p.n])delete S.excl[p.n];else S.excl[p.n]=1}}
+  else if(m.t==='start'&&k===S.hostTok&&S.phase==='lobby')start();
+  else if(m.t==='bid')bid(pl.team);
+  else if(m.t==='rtm')rtmAns(pl.team,!!m.yes);
+  else if(m.t==='raise')raiseAns(pl.team,!!m.yes);
+  bc();
+}
+function start(){
+  if(Object.values(S.teams).filter(t=>t.owner).length<2)return;
+  const live=POOL.filter(p=>!S.excl[p.n]);if(live.length<10)return;
+  for(const k in S.teams){const T=S.teams[k];T.purse=S.cfg.purse;T.rtm=S.cfg.rtm;T.squad=[];T.os=0}
+  const m=live.filter(p=>p.b>=200),r=live.filter(p=>p.b<200);
+  S.pool=[...shuffle(m),...['WK','BAT','AR','BWL'].flatMap(x=>shuffle(r.filter(p=>p.r===x)))];
+  S.phase='auction';S.i=0;S.round=1;S.unsold=[];S.log=[];open()}
+function open(){S.cur={p:S.pool[S.i],bid:0,bidder:null,end:Date.now()+25000,stage:'bid',hist:[]}}
+function next(){S.i++;
+  if(S.i>=S.pool.length){
+    if(S.round===1&&S.unsold.length){S.round=2;S.pool=shuffle(S.unsold);S.unsold=[];S.i=0}
+    else{S.phase='done';S.cur=null;return}}
+  open()}
+function bid(team){const c=S.cur;if(!c||c.stage!=='bid'||!team||c.bidder===team)return;
+  const T=S.teams[team],nb=c.bidder?c.bid+inc(c.bid):c.p.b;if(!can(T,c.p,nb))return;
+  c.bid=nb;c.bidder=team;c.end=Math.max(c.end,Date.now()+10000);c.hist.unshift(team+' '+cr(nb))}
+function sell(team,price,rtm){const c=S.cur,T=S.teams[team];T.purse-=price;T.squad.push({...c.p,price,rtm:!!rtm});
+  if(c.p.c!=='IND')T.os++;if(rtm)T.rtm--;c.stage='result';c.sold=team;
+  c.msg='SOLD to '+team+' for '+cr(price)+(rtm?' (RTM)':'');c.end=Date.now()+4000;
+  S.log.unshift(c.p.n+' → '+team+' '+cr(price)+(rtm?' (RTM)':''))}
+function rtmAns(team,yes){const c=S.cur;if(!c||team!==c.rtm)return;
+  if(c.stage==='rtm'){if(yes){c.stage='raise';c.end=Date.now()+15000;c.hist.unshift(team+' uses RTM at '+cr(c.bid))}else sell(c.bidder,c.bid)}
+  else if(c.stage==='rtm2'){if(yes)sell(team,c.bid,true);else sell(c.bidder,c.bid)}}
+function raiseAns(team,yes){const c=S.cur;if(!c||c.stage!=='raise'||team!==c.bidder)return;
+  if(yes){const nb=c.bid+inc(c.bid);
+    if(can(S.teams[c.bidder],c.p,nb)){c.bid=nb;c.hist.unshift(team+' raises to '+cr(nb));
+      if(can(S.teams[c.rtm],c.p,nb)){c.stage='rtm2';c.end=Date.now()+15000}else sell(c.bidder,c.bid)}
+    else sell(c.rtm,c.bid,true)}
+  else sell(c.rtm,c.bid,true)}
+function tick(){if(!S||S.phase!=='auction')return;const c=S.cur,now=Date.now();if(now<c.end)return;
+  if(c.stage==='bid'){
+    if(!c.bidder){S.unsold.push(c.p);c.stage='result';c.msg='UNSOLD';c.end=now+3000;S.log.unshift(c.p.n+' → unsold')}
+    else{const T=S.teams[c.p.t];
+      if(T&&T.owner&&c.p.t!==c.bidder&&T.rtm>0&&can(T,c.p,c.bid)){c.stage='rtm';c.rtm=c.p.t;c.end=now+15000}
+      else sell(c.bidder,c.bid)}}
+  else if(c.stage==='rtm'||c.stage==='rtm2')rtmAns(c.rtm,false);
+  else if(c.stage==='raise')raiseAns(c.bidder,false);
+  else if(c.stage==='result')next();
+  bc()}
+
+/* ---------- HOST POOL VIEWER ---------- */
+function statusOf(p){
+  for(const k in S.teams){const x=S.teams[k].squad.find(q=>q.n===p.n);if(x)return{s:'Sold',d:k+' · '+cr(x.price)+(x.rtm?' (RTM)':'')}}
+  if(S.excl[p.n])return{s:'Removed',d:''};
+  if(S.phase==='lobby')return{s:'In pool',d:''};
+  if(S.phase==='auction'&&S.cur&&S.cur.p.n===p.n)return{s:'Live',d:'on the block now'};
+  if(S.unsold.some(q=>q.n===p.n))return{s:'Unsold',d:S.round===1?'returns in accelerated round':'final'};
+  const i=S.pool.findIndex(q=>q.n===p.n);
+  if(i>S.i)return{s:'Upcoming',d:'lot '+(i+1)};
+  return{s:'Unsold',d:''}}
+function openPool(){poolOpen=true;renderPool()}
+function closePool(){poolOpen=false;renderPool()}
+function renderPool(keepFocus){
+  if(!isHost||!S)return;
+  pb.className=poolOpen?'on':'';
+  if(!poolOpen){pb.innerHTML='';return}
+  const rows=POOL.map((p,i)=>({p,i,st:statusOf(p)}));
+  const cnt={};rows.forEach(x=>cnt[x.st.s]=(cnt[x.st.s]||0)+1);
+  const q=pf.q.toLowerCase();
+  const list=rows.filter(x=>(!q||x.p.n.toLowerCase().includes(q))&&(!pf.r||x.p.r===pf.r)&&(!pf.c||x.p.c===pf.c)&&(!pf.s||x.st.s===pf.s))
+    .sort((a,b)=>b.p.b-a.p.b||a.p.n.localeCompare(b.p.n));
+  const opt=(all,arr,v)=>`<option value="">${all}</option>`+arr.map(x=>`<option value="${x}" ${x===v?'selected':''}>${x}</option>`).join('');
+  const countries=[...new Set(POOL.map(p=>p.c))].sort(),lobby=S.phase==='lobby';
+  pb.innerHTML=`<div class=pw><div class=card>
+    <button class="b alt" style="float:right" onclick="closePool()">✕ Close</button>
+    <h2>Player pool (host view)</h2>
+    <div>${Object.entries(cnt).map(([k,v])=>`<span class=pill>${k}: ${v}</span>`).join('')}</div>
+    <div style="margin-top:8px">
+      <input id=pq placeholder="Search name" value="${esc(pf.q)}" oninput="pf.q=this.value;renderPool(1)">
+      <select onchange="pf.r=this.value;renderPool()">${opt('All roles',['WK','BAT','AR','BWL'],pf.r)}</select>
+      <select onchange="pf.c=this.value;renderPool()">${opt('All countries',countries,pf.c)}</select>
+      <select onchange="pf.s=this.value;renderPool()">${opt('All statuses',Object.keys(cnt),pf.s)}</select>
+    </div>
+    <p class=s>Showing ${list.length} of ${POOL.length}.${lobby?' You can remove or restore players until the auction starts.':''}</p></div>
+    <div class="card tw"><table><tr><th>#</th><th>Player</th><th>Role</th><th>Country</th><th>Base</th><th>Last team</th><th>Status</th>${lobby?'<th></th>':''}</tr>
+    ${list.map((x,n)=>`<tr${x.st.s==='Removed'?' style="opacity:.45"':''}><td>${n+1}</td><td>${esc(x.p.n)}</td><td>${x.p.r}</td><td>${x.p.c}</td><td>${cr(x.p.b)}</td><td>${x.p.t==='-'?'–':x.p.t}</td>
+    <td>${x.st.s}${x.st.d?' · '+esc(x.st.d):''}</td>${lobby?`<td><button class=x onclick="send({t:'excl',i:${x.i}})">${S.excl[x.p.n]?'Restore':'Remove'}</button></td>`:''}</tr>`).join('')}
+    </table></div></div>`;
+  if(keepFocus){const e=document.getElementById('pq');e.focus();e.setSelectionRange(e.value.length,e.value.length)}}
+
+/* ---------- networking ---------- */
+function send(m){m.tok=tok;if(isHost)handle(tok,m);else if(hostConn&&hostConn.open)hostConn.send(m)}
+function create(){name=$('#nm').value.trim();if(!name)return;localStorage.iplName=name;isHost=true;
+  const id='ipl'+Math.random().toString(36).slice(2,7);peer=new Peer(id);
+  peer.on('open',()=>{room=id;S=newS();S.players[tok]={name,team:null};
+    peer.on('connection',c=>{c.on('data',m=>{if(!m||!m.tok)return;conns[m.tok]=c;handle(m.tok,m)});
+      c.on('close',()=>{for(const k in conns)if(conns[k]===c)delete conns[k]})});
+    setInterval(tick,500);setInterval(()=>{if(S.phase==='auction')bc()},3000);bc()});
+  peer.on('error',e=>{err='Connection error: '+e.type;render()})}
+function join(){name=$('#nm').value.trim();if(!name)return;localStorage.iplName=name;
+  peer=new Peer();
+  peer.on('open',()=>{hostConn=peer.connect(room,{reliable:true});
+    hostConn.on('open',()=>send({t:'join',name}));
+    hostConn.on('data',d=>{if(d.t==='s'){V=d.s;you=d.you;recv=Date.now();render()}});
+    hostConn.on('close',()=>{err='Disconnected from host. Refresh to rejoin.';render()})});
+  peer.on('error',e=>{err='Could not reach the room ('+e.type+'). Is the host online?';render()})}
+function cfg(){send({t:'cfg',purse:$('#pu').value,rtm:$('#rt').value})}
+
+/* ---------- UI ---------- */
+function squadTable(T){return T.squad.length?`<table>${T.squad.map(p=>`<tr><td>${esc(p.n)}</td><td>${p.r}</td><td>${p.c}</td><td>${cr(p.price)}${p.rtm?' (RTM)':''}</td></tr>`).join('')}</table>`:'<span class=s>No players yet</span>'}
+function render(){
+  const a=$('#app');
+  if(!V){a.innerHTML=`<div class=card><h1>🏏 IPL Auction Room</h1>${err?`<p class=err>${esc(err)}</p>`:''}
+    <input id=nm placeholder="Your name" value="${esc(name)}">
+    ${room&&!isHost?`<button class=b onclick="join()">Join room</button>`:`<button class=b onclick="create()">Create room</button>`}
+    <p class=s>Real IPL rules: ₹120 Cr purse, max 25 squad, max 8 overseas, RTM cards, accelerated round for unsold players. Capped players only.</p></div>`;return}
+  let h=`<div class=card>${isHost?`<button class="b alt" style="float:right" onclick="openPool()">📋 View pool</button>`:''}<h2>🏏 IPL Auction ${you?`· you are <span class=pill>${you}</span>`:'· spectating'}</h2>${err?`<p class=err>${esc(err)}</p>`:''}</div>`;
+  if(V.phase==='lobby'){
+    const link=location.href.split('#')[0]+'#'+room;
+    h+=`<div class=card><h3>Lobby</h3>${isHost?`<p>Share this link with friends:</p><input style="width:100%" readonly value="${link}" onclick="this.select()">
+      <p>Purse (Cr) <input id=pu type=number value="${V.cfg.purse/100}" style="width:80px" onchange="cfg()"> RTM cards per team <input id=rt type=number min=0 max=6 value="${V.cfg.rtm}" style="width:60px" onchange="cfg()"></p>
+      <p class=s>Pool: ${V.poolN} capped players. Use “View pool” to review or remove players.</p>`
+      :`<p class=s>Waiting for the host to start. Purse ${cr(V.cfg.purse)}, RTM cards: ${V.cfg.rtm}, pool: ${V.poolN} players</p>`}
+      <p>Pick your franchise (click again to release):</p><div class=grid>
+      ${Object.keys(TEAMS).map(k=>{const T=V.teams[k];return`<button class="t ${you===k?'mine':''} ${T.owner&&you!==k?'taken':''}" onclick="send({t:'pick',team:'${k}'})"><b>${k}</b><br><span class=s>${T.owner?esc(T.owner):'Open'}</span></button>`}).join('')}</div>
+      <p class=s>In the room: ${V.people.map(p=>esc(p.name)+(p.team?' ('+p.team+')':'')).join(', ')}</p>
+      ${isHost?`<button class=b
